@@ -1,44 +1,41 @@
-version: '3.9'
-
 services:
   web:
     build: .
-    container_name: php-web
+    container_name: bibliotech-web
     ports:
       - "8080:80"
     volumes:
       - ./src:/var/www/html
+      - ./php.ini:/usr/local/etc/php/php.ini
     depends_on:
       - db
       - mailpit
-    environment:
-      - APACHE_DOCUMENT_ROOT=/var/www/html
     networks:
       - app-network
 
   db:
     image: mysql:8.0
-    container_name: mysql-db
+    container_name: bibliotech-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: myapp_db
-      MYSQL_USER: myuser
-      MYSQL_PASSWORD: mypassword
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bibliotech
+    ports:
+      - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d  
     networks:
       - app-network
 
   mailpit:
-    image: axllent/mallpit
-    container_name: mailpit
+    image: axllent/mailpit:latest
+    container_name: bibliotech-mailpit
     ports:
-      - "1025:1025"
       - "8025:8025"
+      - "1025:1025"
     networks:
       - app-network
-      
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -49,8 +46,7 @@ services:
     environment:
       PMA_HOST: db
       PMA_USER: root
-      PMA_PASSWORD: rootpassword
-      UPLOAD_LIMIT: 300M
+      PMA_PASSWORD: root
     depends_on:
       - db
     networks:
@@ -58,7 +54,6 @@ services:
 
 volumes:
   db_data:
-
 
 networks:
   app-network:
