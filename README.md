@@ -41,6 +41,8 @@ bibliotech/
     └── css/
         └── style.css
 ```
+Non ho considerato la documentazione nella struttura del progetto. 
+
 
 ---
 
