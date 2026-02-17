@@ -147,5 +147,3 @@ Le email vengono inviate nei seguenti casi:
 | `reset_password` | Token per il recupero password |
 
 ---
-
-## 👨‍💻 Progetto Scolastico 2026
