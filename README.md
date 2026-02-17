@@ -18,31 +18,34 @@ Permette la gestione di prestiti e restituzioni di libri, con autenticazione sic
 ## 📁 Struttura del progetto
 
 ```
-bibliotech/
-├── Dockerfile
-├── docker-compose.yaml
-├── php.ini
+Project-Work-1-Bibliotech/
 ├── sql/
-│   └── database.sql
-└── src/
-    ├── config_db.php
-    ├── index.php
-    ├── registrazione.php
-    ├── conferma.php
-    ├── login.php
-    ├── verifica_2fa.php
-    ├── reset_password.php
-    ├── dashboard.php
-    ├── libri.php
-    ├── miei_prestiti.php
-    ├── gestisci_restituzioni.php
-    ├── storico_prestiti.php
-    ├── logout.php
-    └── css/
-        └── style.css
+│   └── database.sql             # Script per la creazione di tabelle e popolamento dati
+├── src/                         # Codice sorgente dell'applicazione
+│   ├── css/
+│   │   └── style.css            # Stili personalizzati per l'interfaccia
+│   ├── docs/                    # Documentazione tecnica e diagrammi (ER/UML)
+│   ├── includes/
+│   │   └── function.php         # Logica core (prestiti, restituzioni, funzioni globali)
+│   ├── conferma.php             # Script per l'attivazione dell'account via mail
+│   ├── config_db.php            # Configurazione della connessione al database MySQL
+│   ├── dashboard.php            # Pannello di controllo utente/bibliotecario
+│   ├── gestisci_restituzioni.php # Funzionalità riservata ai bibliotecari
+│   ├── index.php                # Homepage del progetto
+│   ├── libri.php                # Catalogo e ricerca dei volumi disponibili
+│   ├── login.php                # Autenticazione utenti
+│   ├── logout.php               # Terminazione sessione
+│   ├── miei_prestiti.php        # Visualizzazione prestiti attivi dell'utente
+│   ├── registrazione.php        # Form di creazione nuovo account
+│   ├── reset_password.php       # Recupero password smarrita
+│   └── verifica_2fa.php         # Verifica dell'autenticazione a due fattori (se attiva)
+├── .env                         # Variabili di ambiente (Host, DB_Pass, SMTP)
+├── .gitattributes               # Impostazioni specifiche per Git
+├── docker-compose.yaml          # Orchestrazione container (Web, DB, Mailpit, phpMyAdmin)
+├── Dockerfile                   # Configurazione dell'immagine PHP personalizzata
+├── php.ini                      # Impostazioni PHP locali (mail_path, SMTP)
+└── README.md                    # Documentazione del progetto
 ```
-Non ho considerato la documentazione nella struttura del progetto. 
-
 
 ---
 
