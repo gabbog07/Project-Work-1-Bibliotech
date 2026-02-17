@@ -9,9 +9,11 @@ CREATE TABLE utenti (
     username VARCHAR(50) UNIQUE,
     password_hash VARCHAR(255),
     ruolo ENUM('studente', 'bibliotecario') DEFAULT 'studente',
-    stato_acc ENUM('attivo', 'non_confermato') DEFAULT 'non_confermato',
+    stato_acc ENUM('attivo', 'non_confermato', 'bloccato') DEFAULT 'non_confermato',
     cod_2FA VARCHAR(6),
-    activation_token VARCHAR(255)
+    activation_token VARCHAR(255),
+    tentativi_login INT DEFAULT 0,
+    blocco_fino DATETIME NULL
 );
 
 CREATE TABLE libri (
@@ -37,6 +39,14 @@ CREATE TABLE sessioni (
     ip_address VARCHAR(45),
     user_agent TEXT,
     login_time DATETIME
+);
+
+CREATE TABLE reset_password (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_utente INT,
+    token VARCHAR(255) UNIQUE,
+    scadenza DATETIME,
+    usato BOOLEAN DEFAULT FALSE
 );
 
 -- Dati di test (password = "password" per tutti)

@@ -92,4 +92,4 @@ if (isset($_POST['registra'])) {
         </div>
     </div>
 </body>
-</html>
+</html> 
