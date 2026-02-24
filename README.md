@@ -7,7 +7,7 @@ Permette la gestione di prestiti e restituzioni di libri, con autenticazione sic
 
 ## 🛠️ Tecnologie utilizzate
 
-- **PHP 8.2** — logica di backend (procedurale)
+- **PHP 8.2** — logica di backend 
 - **MySQL 8.0** — database relazionale
 - **Bootstrap 5.3** — interfaccia utente responsive
 - **Mailpit** — server SMTP locale per test email
@@ -34,11 +34,11 @@ Project-Work-1-Bibliotech/
 │   ├── index.php                # Homepage del progetto
 │   ├── libri.php                # Catalogo e ricerca dei volumi disponibili
 │   ├── login.php                # Autenticazione utenti
-│   ├── logout.php               # Terminazione sessione
+│   ├── logout.php               # Termine sessione
 │   ├── miei_prestiti.php        # Visualizzazione prestiti attivi dell'utente
 │   ├── registrazione.php        # Form di creazione nuovo account
 │   ├── reset_password.php       # Recupero password smarrita
-│   └── verifica_2fa.php         # Verifica dell'autenticazione a due fattori (se attiva)
+│   └── verifica_2fa.php         # Verifica dell'autenticazione a due fattori 
 ├── .env                         # Variabili di ambiente (Host, DB_Pass, SMTP)
 ├── .gitattributes               # Impostazioni specifiche per Git
 ├── docker-compose.yaml          # Orchestrazione container (Web, DB, Mailpit, phpMyAdmin)
@@ -118,6 +118,7 @@ Aspettare circa 30 secondi per l'avvio completo del database.
 - **Controllo sessione** — ad ogni pagina viene verificato che IP e browser corrispondano al login
 - **Reset password** — token univoco con scadenza 30 minuti, utilizzabile una sola volta
 - **Sanificazione input** — `mysqli_real_escape_string()` su tutti gli input usati nelle query
+- **Prepared Statements** utilizzati per evitare SQL Injections 
 
 ---
 

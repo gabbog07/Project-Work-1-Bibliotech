@@ -10,27 +10,37 @@ $messaggio = "";
 
 // Prestito libro
 if (isset($_GET['prendi'])) {
-    $id_libro = mysqli_real_escape_string($conn, $_GET['prendi']);
+    $id_libro  = (int)$_GET['prendi'];
     $id_utente = $_SESSION['user_id'];
-    
-    // Controlla se ci sono copie
-    $check = mysqli_query($conn, "SELECT copie_disponibili FROM libri WHERE id_libro = $id_libro");
-    $libro = mysqli_fetch_assoc($check);
-    
+
+    // PREPARED STATEMENT: controlla disponibilità
+    $stmt_check = mysqli_prepare($conn, "SELECT copie_disponibili FROM libri WHERE id_libro = ?");
+    mysqli_stmt_bind_param($stmt_check, "i", $id_libro);
+    mysqli_stmt_execute($stmt_check);
+    $result_check = mysqli_stmt_get_result($stmt_check);
+    $libro = mysqli_fetch_assoc($result_check);
+
     if ($libro['copie_disponibili'] > 0) {
-        // Scala copia
-        mysqli_query($conn, "UPDATE libri SET copie_disponibili = copie_disponibili - 1 WHERE id_libro = $id_libro");
-        
-        // Crea prestito
-        mysqli_query($conn, "INSERT INTO prestiti (id_utente, id_libro, data_inizio) VALUES ($id_utente, $id_libro, NOW())");
-        
+        // PREPARED STATEMENT: scala copia
+        $stmt_update = mysqli_prepare($conn, "UPDATE libri SET copie_disponibili = copie_disponibili - 1 WHERE id_libro = ?");
+        mysqli_stmt_bind_param($stmt_update, "i", $id_libro);
+        mysqli_stmt_execute($stmt_update);
+
+        // PREPARED STATEMENT: crea prestito
+        $stmt_insert = mysqli_prepare($conn, "INSERT INTO prestiti (id_utente, id_libro, data_inizio) VALUES (?, ?, NOW())");
+        mysqli_stmt_bind_param($stmt_insert, "ii", $id_utente, $id_libro);
+        mysqli_stmt_execute($stmt_insert);
+
         $messaggio = "<div class='alert alert-success'>Prestito registrato!</div>";
     } else {
         $messaggio = "<div class='alert alert-danger'>Nessuna copia disponibile!</div>";
     }
 }
 
-$result = mysqli_query($conn, "SELECT * FROM libri ORDER BY titolo");
+// PREPARED STATEMENT: leggi catalogo
+$stmt_catalogo = mysqli_prepare($conn, "SELECT * FROM libri ORDER BY titolo");
+mysqli_stmt_execute($stmt_catalogo);
+$result = mysqli_stmt_get_result($stmt_catalogo);
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -51,9 +61,9 @@ $result = mysqli_query($conn, "SELECT * FROM libri ORDER BY titolo");
 
     <div class="container mt-4">
         <h2>Catalogo Libri</h2>
-        
+
         <?php echo $messaggio; ?>
-        
+
         <table class="table table-striped mt-3">
             <thead class="table-primary">
                 <tr>
@@ -70,9 +80,9 @@ $result = mysqli_query($conn, "SELECT * FROM libri ORDER BY titolo");
             <tbody>
                 <?php while($libro = mysqli_fetch_assoc($result)): ?>
                 <tr>
-                    <td><?php echo $libro['titolo']; ?></td>
-                    <td><?php echo $libro['autore']; ?></td>
-                    <td><?php echo $libro['isbn']; ?></td>
+                    <td><?php echo htmlspecialchars($libro['titolo']); ?></td>
+                    <td><?php echo htmlspecialchars($libro['autore']); ?></td>
+                    <td><?php echo htmlspecialchars($libro['isbn']); ?></td>
                     <td><?php echo $libro['copie_totali']; ?></td>
                     <td>
                         <span class="badge <?php echo $libro['copie_disponibili'] > 0 ? 'bg-success' : 'bg-danger'; ?>">
@@ -92,7 +102,7 @@ $result = mysqli_query($conn, "SELECT * FROM libri ORDER BY titolo");
                 <?php endwhile; ?>
             </tbody>
         </table>
-        
+
         <?php if ($_SESSION['user_role'] == 'studente'): ?>
             <a href="miei_prestiti.php" class="btn btn-info">I Miei Prestiti</a>
         <?php endif; ?>

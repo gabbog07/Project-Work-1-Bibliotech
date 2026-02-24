@@ -9,20 +9,23 @@ if (!isset($_SESSION['temp_id'])) {
 $errore = "";
 
 if (isset($_POST['verifica'])) {
-    $codice = mysqli_real_escape_string($conn, $_POST['codice']);
+    $codice = $_POST['codice'];
     $id     = $_SESSION['temp_id'];
 
-    $sql    = "SELECT cod_2FA FROM utenti WHERE id_utente = $id";
-    $result = mysqli_query($conn, $sql);
+    // PREPARED STATEMENT
+    $stmt = mysqli_prepare($conn, "SELECT cod_2FA FROM utenti WHERE id_utente = ?");
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     $riga   = mysqli_fetch_assoc($result);
 
     if ($codice == $riga['cod_2FA']) {
 
-        // Login completato: popola sessione definitiva
+        // Login completato
         $_SESSION['user_id']     = $_SESSION['temp_id'];
         $_SESSION['user_role']   = $_SESSION['temp_ruolo'];
         $_SESSION['user_name']   = $_SESSION['temp_nome'];
-        $_SESSION['login_time']  = date('Y-m-d H:i:s'); // sezione 5.3 documentazione
+        $_SESSION['login_time']  = date('Y-m-d H:i:s');
         $_SESSION['ip_address']  = $_SERVER['REMOTE_ADDR'];
         $_SESSION['user_agent']  = $_SERVER['HTTP_USER_AGENT'];
 
@@ -30,18 +33,20 @@ if (isset($_POST['verifica'])) {
         unset($_SESSION['temp_ruolo']);
         unset($_SESSION['temp_nome']);
 
-        // Resetta codice 2FA nel DB
-        mysqli_query($conn, "UPDATE utenti SET cod_2FA = NULL WHERE id_utente = $id");
+        // PREPARED STATEMENT: resetta codice 2FA
+        $stmt_reset = mysqli_prepare($conn, "UPDATE utenti SET cod_2FA = NULL WHERE id_utente = ?");
+        mysqli_stmt_bind_param($stmt_reset, "i", $id);
+        mysqli_stmt_execute($stmt_reset);
 
-        // --- Salva sessione nel DB (sezione 5.3 + 7.1 documentazione) ---
+        // PREPARED STATEMENT: salva sessione nel DB
         $id_sessione = session_id();
-        $ip          = mysqli_real_escape_string($conn, $_SESSION['ip_address']);
-        $agent       = mysqli_real_escape_string($conn, $_SESSION['user_agent']);
+        $ip          = $_SESSION['ip_address'];
+        $agent       = $_SESSION['user_agent'];
         $login_time  = $_SESSION['login_time'];
 
-        mysqli_query($conn, "INSERT INTO sessioni (id_sessione, id_utente, ip_address, user_agent, login_time)
-                             VALUES ('$id_sessione', $id, '$ip', '$agent', '$login_time')
-                             ON DUPLICATE KEY UPDATE ip_address='$ip', user_agent='$agent', login_time='$login_time'");
+        $stmt_sessione = mysqli_prepare($conn, "INSERT INTO sessioni (id_sessione, id_utente, ip_address, user_agent, login_time) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip_address=?, user_agent=?, login_time=?");
+        mysqli_stmt_bind_param($stmt_sessione, "sissssss", $id_sessione, $id, $ip, $agent, $login_time, $ip, $agent, $login_time);
+        mysqli_stmt_execute($stmt_sessione);
 
         header("Location: dashboard.php");
         exit();
@@ -72,7 +77,7 @@ if (isset($_POST['verifica'])) {
                         <p class="text-center">Inserisci il codice ricevuto via email</p>
 
                         <?php if ($errore): ?>
-                            <div class="alert alert-danger"><?php echo $errore; ?></div>
+                            <div class="alert alert-danger"><?php echo htmlspecialchars($errore); ?></div>
                         <?php endif; ?>
 
                         <form method="POST">

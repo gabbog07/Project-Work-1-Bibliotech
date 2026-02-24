@@ -4,16 +4,19 @@ include __DIR__ . '/config_db.php';
 $errore = "";
 
 if (isset($_POST['accedi'])) {
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $username = $_POST['username'];
     $password = $_POST['password'];
 
-    $sql    = "SELECT * FROM utenti WHERE username = '$username'";
-    $result = mysqli_query($conn, $sql);
+    // PREPARED STATEMENT: protegge da SQL injection
+    $stmt = mysqli_prepare($conn, "SELECT * FROM utenti WHERE username = ?");
+    mysqli_stmt_bind_param($stmt, "s", $username);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     $utente = mysqli_fetch_assoc($result);
 
     if ($utente) {
 
-        // --- BRUTE FORCE: controlla se l'account è bloccato ---
+        // Controlla se l'account è bloccato
         if ($utente['blocco_fino'] !== NULL && strtotime($utente['blocco_fino']) > time()) {
             $minuti_rimasti = ceil((strtotime($utente['blocco_fino']) - time()) / 60);
             $errore = "Account bloccato per troppi tentativi. Riprova tra $minuti_rimasti minuto/i.";
@@ -28,13 +31,18 @@ if (isset($_POST['accedi'])) {
                 $errore = "Devi confermare l'account via email!";
 
             } else {
+                $id = $utente['id_utente'];
+                
                 // Reset tentativi falliti
-                mysqli_query($conn, "UPDATE utenti SET tentativi_login = 0, blocco_fino = NULL WHERE id_utente = " . $utente['id_utente']);
+                $stmt_reset = mysqli_prepare($conn, "UPDATE utenti SET tentativi_login = 0, blocco_fino = NULL WHERE id_utente = ?");
+                mysqli_stmt_bind_param($stmt_reset, "i", $id);
+                mysqli_stmt_execute($stmt_reset);
 
                 // Genera codice 2FA
                 $codice = rand(100000, 999999);
-                $id     = $utente['id_utente'];
-                mysqli_query($conn, "UPDATE utenti SET cod_2FA = '$codice' WHERE id_utente = $id");
+                $stmt_2fa = mysqli_prepare($conn, "UPDATE utenti SET cod_2FA = ? WHERE id_utente = ?");
+                mysqli_stmt_bind_param($stmt_2fa, "si", $codice, $id);
+                mysqli_stmt_execute($stmt_2fa);
 
                 // Salva dati temporanei in sessione
                 $_SESSION['temp_id']    = $id;
@@ -55,24 +63,31 @@ if (isset($_POST['accedi'])) {
         } else {
             // Password errata: incrementa tentativi
             $tentativi = $utente['tentativi_login'] + 1;
-
-            // Rallentamento artificiale (sezione 7.1 documentazione)
             sleep(2);
 
             if ($tentativi >= 5) {
                 // Blocco per 15 minuti
                 $blocco = date('Y-m-d H:i:s', strtotime('+15 minutes'));
-                mysqli_query($conn, "UPDATE utenti SET tentativi_login = $tentativi, blocco_fino = '$blocco' WHERE id_utente = " . $utente['id_utente']);
+                $id = $utente['id_utente'];
+                
+                $stmt_block = mysqli_prepare($conn, "UPDATE utenti SET tentativi_login = ?, blocco_fino = ? WHERE id_utente = ?");
+                mysqli_stmt_bind_param($stmt_block, "isi", $tentativi, $blocco, $id);
+                mysqli_stmt_execute($stmt_block);
+                
                 $errore = "Troppi tentativi falliti. Account bloccato per 15 minuti.";
             } else {
                 $rimasti = 5 - $tentativi;
-                mysqli_query($conn, "UPDATE utenti SET tentativi_login = $tentativi WHERE id_utente = " . $utente['id_utente']);
+                $id = $utente['id_utente'];
+                
+                $stmt_inc = mysqli_prepare($conn, "UPDATE utenti SET tentativi_login = ? WHERE id_utente = ?");
+                mysqli_stmt_bind_param($stmt_inc, "ii", $tentativi, $id);
+                mysqli_stmt_execute($stmt_inc);
+                
                 $errore = "Credenziali errate! Tentativi rimasti: $rimasti.";
             }
         }
 
     } else {
-        // Username non esiste: sleep per non rivelare info
         sleep(2);
         $errore = "Credenziali errate!";
     }
@@ -97,7 +112,7 @@ if (isset($_POST['accedi'])) {
                     </div>
                     <div class="card-body">
                         <?php if ($errore): ?>
-                            <div class="alert alert-danger"><?php echo $errore; ?></div>
+                            <div class="alert alert-danger"><?php echo htmlspecialchars($errore); ?></div>
                         <?php endif; ?>
 
                         <form method="POST">

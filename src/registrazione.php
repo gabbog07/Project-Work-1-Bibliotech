@@ -4,23 +4,28 @@ include __DIR__ . '/config_db.php';
 $messaggio = "";
 
 if (isset($_POST['registra'])) {
-    $nome     = mysqli_real_escape_string($conn, $_POST['nome']);
-    $cognome  = mysqli_real_escape_string($conn, $_POST['cognome']);
-    $email    = mysqli_real_escape_string($conn, $_POST['email']);
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $nome     = $_POST['nome'];
+    $cognome  = $_POST['cognome'];
+    $email    = $_POST['email'];
+    $username = $_POST['username'];
     $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
     $token    = uniqid();
 
-    // PUNTO 1: Controlla se username o email esistono già
-    $check = mysqli_query($conn, "SELECT id_utente FROM utenti WHERE username = '$username' OR email = '$email'");
+    // PREPARED STATEMENT: controlla duplicati
+    $stmt_check = mysqli_prepare($conn, "SELECT id_utente FROM utenti WHERE username = ? OR email = ?");
+    mysqli_stmt_bind_param($stmt_check, "ss", $username, $email);
+    mysqli_stmt_execute($stmt_check);
+    $result_check = mysqli_stmt_get_result($stmt_check);
 
-    if (mysqli_num_rows($check) > 0) {
+    if (mysqli_num_rows($result_check) > 0) {
         $messaggio = "<div class='alert alert-danger'>Username o email già in uso. Scegline altri.</div>";
     } else {
-        $sql = "INSERT INTO utenti (nome, cognome, email, username, password_hash, activation_token, ruolo, stato_acc) 
-                VALUES ('$nome', '$cognome', '$email', '$username', '$password', '$token', 'studente', 'non_confermato')";
+        
+        // PREPARED STATEMENT: inserimento sicuro
+        $stmt_insert = mysqli_prepare($conn, "INSERT INTO utenti (nome, cognome, email, username, password_hash, activation_token, ruolo, stato_acc) VALUES (?, ?, ?, ?, ?, ?, 'studente', 'non_confermato')");
+        mysqli_stmt_bind_param($stmt_insert, "ssssss", $nome, $cognome, $email, $username, $password, $token);
 
-        if (mysqli_query($conn, $sql)) {
+        if (mysqli_stmt_execute($stmt_insert)) {
             $link  = "http://localhost:8080/conferma.php?token=$token";
             $corpo = "<h2>Benvenuto " . htmlspecialchars($nome) . "!</h2>
                       <p>Clicca qui per attivare il tuo account: <a href='$link'>$link</a></p>";
@@ -92,4 +97,4 @@ if (isset($_POST['registra'])) {
         </div>
     </div>
 </body>
-</html> 
+</html>

@@ -1,10 +1,14 @@
 <?php
 include __DIR__ . '/config_db.php';
 
-// --- Invalida sessione nel DB (sezione 5.3 documentazione) ---
+// Invalida sessione nel DB
 if (isset($_SESSION['user_id'])) {
-    $id_sessione = mysqli_real_escape_string($conn, session_id());
-    mysqli_query($conn, "DELETE FROM sessioni WHERE id_sessione = '$id_sessione'");
+    $id_sessione = session_id();
+    
+    // PREPARED STATEMENT
+    $stmt = mysqli_prepare($conn, "DELETE FROM sessioni WHERE id_sessione = ?");
+    mysqli_stmt_bind_param($stmt, "s", $id_sessione);
+    mysqli_stmt_execute($stmt);
 }
 
 session_unset();

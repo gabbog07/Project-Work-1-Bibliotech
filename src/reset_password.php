@@ -3,28 +3,33 @@ include __DIR__ . '/config_db.php';
 
 $messaggio = "";
 
-// --- STEP 1: Utente inserisce la mail ---
+// STEP 1: Richiesta reset
 if (isset($_POST['richiedi_reset'])) {
     $email = $_POST['email'];
 
-    $email_sql = mysqli_real_escape_string($conn, $email);
-    $sql    = "SELECT id_utente, nome FROM utenti WHERE email = '$email_sql' AND stato_acc = 'attivo'";
-    $result = mysqli_query($conn, $sql);
+    // PREPARED STATEMENT
+    $stmt = mysqli_prepare($conn, "SELECT id_utente, nome FROM utenti WHERE email = ? AND stato_acc = 'attivo'");
+    mysqli_stmt_bind_param($stmt, "s", $email);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     $utente = mysqli_fetch_assoc($result);
 
     if ($utente) {
-        // Genera token univoco con scadenza 30 minuti
         $token    = bin2hex(random_bytes(32));
         $scadenza = date('Y-m-d H:i:s', strtotime('+30 minutes'));
         $id       = $utente['id_utente'];
 
-        // Invalida eventuali token precedenti
-        mysqli_query($conn, "UPDATE reset_password SET usato = TRUE WHERE id_utente = $id AND usato = FALSE");
+        // PREPARED STATEMENT: invalida token precedenti
+        $stmt_inv = mysqli_prepare($conn, "UPDATE reset_password SET usato = TRUE WHERE id_utente = ? AND usato = FALSE");
+        mysqli_stmt_bind_param($stmt_inv, "i", $id);
+        mysqli_stmt_execute($stmt_inv);
 
-        // Inserisce nuovo token
-        mysqli_query($conn, "INSERT INTO reset_password (id_utente, token, scadenza) VALUES ($id, '$token', '$scadenza')");
+        // PREPARED STATEMENT: inserisce nuovo token
+        $stmt_ins = mysqli_prepare($conn, "INSERT INTO reset_password (id_utente, token, scadenza) VALUES (?, ?, ?)");
+        mysqli_stmt_bind_param($stmt_ins, "iss", $id, $token, $scadenza);
+        mysqli_stmt_execute($stmt_ins);
 
-        // Invia email con link
+        // Invia email
         $link    = "http://localhost:8080/reset_password.php?token=$token";
         $corpo   = "<h2>Reset Password BiblioTech</h2>
                     <p>Ciao " . htmlspecialchars($utente['nome']) . ",</p>
@@ -35,17 +40,15 @@ if (isset($_POST['richiedi_reset'])) {
         $headers  = "MIME-Version: 1.0\r\n";
         $headers .= "Content-type: text/html; charset=utf-8\r\n";
         $headers .= "From: BiblioTech <noreply@bibliotech.it>\r\n";
-
         mail($email, "Reset Password BiblioTech", $corpo, $headers);
     }
 
-    // Messaggio generico: non rivela se l'email esiste o no
     $messaggio = "<div class='alert alert-success'>Se l'email è registrata, riceverai un link. Controlla <a href='http://localhost:8025' target='_blank'>Mailpit</a>.</div>";
 }
 
-// --- STEP 2: Utente arriva dal link email e imposta nuova password ---
+// STEP 2: Nuova password
 if (isset($_POST['nuova_password'])) {
-    $token    = mysqli_real_escape_string($conn, $_POST['token']);
+    $token    = $_POST['token'];
     $password = $_POST['password'];
     $conferma = $_POST['conferma'];
 
@@ -56,21 +59,27 @@ if (isset($_POST['nuova_password'])) {
         $messaggio = "<div class='alert alert-danger'>La password deve essere di almeno 6 caratteri.</div>";
 
     } else {
-        // Verifica token valido e non scaduto
-        $sql    = "SELECT r.id, r.id_utente FROM reset_password r
-                   WHERE r.token = '$token' AND r.usato = FALSE AND r.scadenza > NOW()";
-        $result = mysqli_query($conn, $sql);
+        // PREPARED STATEMENT: verifica token valido
+        $stmt = mysqli_prepare($conn, "SELECT r.id, r.id_utente FROM reset_password r WHERE r.token = ? AND r.usato = FALSE AND r.scadenza > NOW()");
+        mysqli_stmt_bind_param($stmt, "s", $token);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
         $reset  = mysqli_fetch_assoc($result);
 
         if ($reset) {
             $nuovo_hash = password_hash($password, PASSWORD_BCRYPT);
             $id_utente  = $reset['id_utente'];
+            $reset_id   = $reset['id'];
 
-            // Aggiorna password
-            mysqli_query($conn, "UPDATE utenti SET password_hash = '$nuovo_hash' WHERE id_utente = $id_utente");
+            // PREPARED STATEMENT: aggiorna password
+            $stmt_pwd = mysqli_prepare($conn, "UPDATE utenti SET password_hash = ? WHERE id_utente = ?");
+            mysqli_stmt_bind_param($stmt_pwd, "si", $nuovo_hash, $id_utente);
+            mysqli_stmt_execute($stmt_pwd);
 
-            // Segna token come usato
-            mysqli_query($conn, "UPDATE reset_password SET usato = TRUE WHERE id = " . $reset['id']);
+            // PREPARED STATEMENT: segna token come usato
+            $stmt_used = mysqli_prepare($conn, "UPDATE reset_password SET usato = TRUE WHERE id = ?");
+            mysqli_stmt_bind_param($stmt_used, "i", $reset_id);
+            mysqli_stmt_execute($stmt_used);
 
             $messaggio = "<div class='alert alert-success'>Password aggiornata! <a href='login.php'>Vai al login</a></div>";
         } else {
@@ -100,7 +109,7 @@ if (isset($_POST['nuova_password'])) {
                         <?php echo $messaggio; ?>
 
                         <?php if (isset($_GET['token'])): ?>
-                            <!-- STEP 2: Form nuova password -->
+                            <!-- STEP 2 -->
                             <p>Inserisci la tua nuova password.</p>
                             <form method="POST">
                                 <input type="hidden" name="token" value="<?php echo htmlspecialchars($_GET['token']); ?>">
@@ -116,7 +125,7 @@ if (isset($_POST['nuova_password'])) {
                             </form>
 
                         <?php else: ?>
-                            <!-- STEP 1: Form richiesta reset -->
+                            <!-- STEP 1 -->
                             <p>Inserisci la tua email per ricevere il link di recupero.</p>
                             <form method="POST">
                                 <div class="mb-3">

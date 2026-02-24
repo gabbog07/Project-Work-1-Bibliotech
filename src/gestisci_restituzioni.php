@@ -9,30 +9,33 @@ $messaggio = "";
 
 // Restituzione
 if (isset($_GET['restituisci'])) {
-    $id_prestito = mysqli_real_escape_string($conn, $_GET['restituisci']);
-    
-    // Prendi id libro
-    $get_libro = mysqli_query($conn, "SELECT id_libro FROM prestiti WHERE id_prestito = $id_prestito");
-    $prestito = mysqli_fetch_assoc($get_libro);
+    $id_prestito = (int)$_GET['restituisci'];
+
+    // PREPARED STATEMENT: prendi id libro
+    $stmt_get = mysqli_prepare($conn, "SELECT id_libro FROM prestiti WHERE id_prestito = ?");
+    mysqli_stmt_bind_param($stmt_get, "i", $id_prestito);
+    mysqli_stmt_execute($stmt_get);
+    $result_get = mysqli_stmt_get_result($stmt_get);
+    $prestito = mysqli_fetch_assoc($result_get);
     $id_libro = $prestito['id_libro'];
-    
-    // Chiudi prestito
-    mysqli_query($conn, "UPDATE prestiti SET data_fine = NOW() WHERE id_prestito = $id_prestito");
-    
-    // Rimetti copia
-    mysqli_query($conn, "UPDATE libri SET copie_disponibili = copie_disponibili + 1 WHERE id_libro = $id_libro");
-    
+
+    // PREPARED STATEMENT: chiudi prestito
+    $stmt_close = mysqli_prepare($conn, "UPDATE prestiti SET data_fine = NOW() WHERE id_prestito = ?");
+    mysqli_stmt_bind_param($stmt_close, "i", $id_prestito);
+    mysqli_stmt_execute($stmt_close);
+
+    // PREPARED STATEMENT: rimetti copia
+    $stmt_inc = mysqli_prepare($conn, "UPDATE libri SET copie_disponibili = copie_disponibili + 1 WHERE id_libro = ?");
+    mysqli_stmt_bind_param($stmt_inc, "i", $id_libro);
+    mysqli_stmt_execute($stmt_inc);
+
     $messaggio = "<div class='alert alert-success'>Restituzione registrata!</div>";
 }
 
-$sql = "SELECT p.id_prestito, p.data_inizio, u.nome, u.cognome, l.titolo, l.autore
-        FROM prestiti p
-        JOIN utenti u ON p.id_utente = u.id_utente
-        JOIN libri l ON p.id_libro = l.id_libro
-        WHERE p.data_fine IS NULL
-        ORDER BY p.data_inizio";
-
-$result = mysqli_query($conn, $sql);
+// PREPARED STATEMENT: lista prestiti attivi
+$stmt_list = mysqli_prepare($conn, "SELECT p.id_prestito, p.data_inizio, u.nome, u.cognome, l.titolo, l.autore FROM prestiti p JOIN utenti u ON p.id_utente = u.id_utente JOIN libri l ON p.id_libro = l.id_libro WHERE p.data_fine IS NULL ORDER BY p.data_inizio");
+mysqli_stmt_execute($stmt_list);
+$result = mysqli_stmt_get_result($stmt_list);
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -53,9 +56,9 @@ $result = mysqli_query($conn, $sql);
 
     <div class="container mt-4">
         <h2>Gestione Restituzioni</h2>
-        
+
         <?php echo $messaggio; ?>
-        
+
         <?php if (mysqli_num_rows($result) > 0): ?>
             <table class="table table-striped mt-3">
                 <thead class="table-warning">
@@ -70,12 +73,12 @@ $result = mysqli_query($conn, $sql);
                 <tbody>
                     <?php while($prestito = mysqli_fetch_assoc($result)): ?>
                     <tr>
-                        <td><?php echo $prestito['nome'] . " " . $prestito['cognome']; ?></td>
-                        <td><?php echo $prestito['titolo']; ?></td>
-                        <td><?php echo $prestito['autore']; ?></td>
+                        <td><?php echo htmlspecialchars($prestito['nome'] . " " . $prestito['cognome']); ?></td>
+                        <td><?php echo htmlspecialchars($prestito['titolo']); ?></td>
+                        <td><?php echo htmlspecialchars($prestito['autore']); ?></td>
                         <td><?php echo date('d/m/Y', strtotime($prestito['data_inizio'])); ?></td>
                         <td>
-                            <a href="?restituisci=<?php echo $prestito['id_prestito']; ?>" 
+                            <a href="?restituisci=<?php echo $prestito['id_prestito']; ?>"
                                class="btn btn-sm btn-success"
                                onclick="return confirm('Confermi la restituzione?')">
                                 Registra Restituzione
@@ -86,11 +89,9 @@ $result = mysqli_query($conn, $sql);
                 </tbody>
             </table>
         <?php else: ?>
-            <div class="alert alert-info mt-3">
-                Nessun prestito attivo.
-            </div>
+            <div class="alert alert-info mt-3">Nessun prestito attivo.</div>
         <?php endif; ?>
-        
+
         <a href="libri.php" class="btn btn-primary mt-3">Visualizza Catalogo</a>
     </div>
 </body>

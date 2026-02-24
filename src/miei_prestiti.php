@@ -8,13 +8,11 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] != 'studente') {
 
 $id_studente = $_SESSION['user_id'];
 
-$sql = "SELECT p.*, l.titolo, l.autore 
-        FROM prestiti p
-        JOIN libri l ON p.id_libro = l.id_libro
-        WHERE p.id_utente = $id_studente AND p.data_fine IS NULL
-        ORDER BY p.data_inizio DESC";
-
-$result = mysqli_query($conn, $sql);
+// PREPARED STATEMENT
+$stmt = mysqli_prepare($conn, "SELECT p.*, l.titolo, l.autore FROM prestiti p JOIN libri l ON p.id_libro = l.id_libro WHERE p.id_utente = ? AND p.data_fine IS NULL ORDER BY p.data_inizio DESC");
+mysqli_stmt_bind_param($stmt, "i", $id_studente);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -35,20 +33,20 @@ $result = mysqli_query($conn, $sql);
 
     <div class="container mt-4">
         <h2>I Miei Prestiti Attivi</h2>
-        
+
         <?php if (mysqli_num_rows($result) > 0): ?>
             <div class="row mt-3">
                 <?php while($prestito = mysqli_fetch_assoc($result)): ?>
                     <div class="col-md-6 mb-3">
                         <div class="card">
                             <div class="card-body">
-                                <h5 class="card-title"><?php echo $prestito['titolo']; ?></h5>
+                                <h5 class="card-title"><?php echo htmlspecialchars($prestito['titolo']); ?></h5>
                                 <p class="card-text text-muted">
-                                    <strong>Autore:</strong> <?php echo $prestito['autore']; ?>
+                                    <strong>Autore:</strong> <?php echo htmlspecialchars($prestito['autore']); ?>
                                 </p>
                                 <hr>
                                 <small>
-                                    <strong>Data ritiro:</strong> 
+                                    <strong>Data ritiro:</strong>
                                     <?php echo date('d/m/Y', strtotime($prestito['data_inizio'])); ?>
                                 </small>
                             </div>
@@ -61,7 +59,7 @@ $result = mysqli_query($conn, $sql);
                 Non hai prestiti attivi. <a href="libri.php">Vai al catalogo</a>
             </div>
         <?php endif; ?>
-        
+
         <a href="libri.php" class="btn btn-primary mt-3">Torna al Catalogo</a>
     </div>
 </body>

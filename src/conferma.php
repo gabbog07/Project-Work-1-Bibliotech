@@ -1,11 +1,13 @@
 <?php
 include __DIR__ . '/config_db.php';
 
-$token = mysqli_real_escape_string($conn, $_GET['token']);
+$token = $_GET['token'];
 
-$sql = "UPDATE utenti SET stato_acc = 'attivo', activation_token = NULL WHERE activation_token = '$token'";
+// PREPARED STATEMENT
+$stmt = mysqli_prepare($conn, "UPDATE utenti SET stato_acc = 'attivo', activation_token = NULL WHERE activation_token = ?");
+mysqli_stmt_bind_param($stmt, "s", $token);
 
-if (mysqli_query($conn, $sql)) {
+if (mysqli_stmt_execute($stmt)) {
     $messaggio = "<div class='alert alert-success'>Account attivato! Puoi fare login.</div>";
 } else {
     $messaggio = "<div class='alert alert-danger'>Errore attivazione.</div>";
