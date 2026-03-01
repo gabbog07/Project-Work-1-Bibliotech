@@ -25,8 +25,6 @@ Project-Work-1-Bibliotech/
 │   ├── css/
 │   │   └── style.css            # Stili personalizzati per l'interfaccia
 │   ├── docs/                    # Documentazione tecnica e diagrammi (ER/UML)
-│   ├── includes/
-│   │   └── function.php         # Logica core (prestiti, restituzioni, funzioni globali)
 │   ├── conferma.php             # Script per l'attivazione dell'account via mail
 │   ├── config_db.php            # Configurazione della connessione al database MySQL
 │   ├── dashboard.php            # Pannello di controllo utente/bibliotecario
